@@ -41,7 +41,7 @@ void MainWindow::createMainMenu()
     //QLabel *m2 = new QLabel("Please enter the number of holes:");
     QInputDialog *holesNo = new QInputDialog;
     //QLabel *m3 = new QLabel("Please enter the number of segments for the next process:");
-    QInputDialog *segmentsNo = new QInputDialog;
+    //QInputDialog *segmentsNo = new QInputDialog;
     //QPushButton *allocate = new QPushButton("Allocate");
     QLabel *m8 = new QLabel("Please choose the algorithm:");
     QComboBox *alg = new QComboBox;
@@ -49,8 +49,8 @@ void MainWindow::createMainMenu()
 
     memorySize->setLabelText("");
     memorySize->setOption(QInputDialog::NoButtons);
-    memorySize->setInputMode(QInputDialog::IntInput);
-    QObject::connect(memorySize, SIGNAL(intValueChanged(int)), this, SLOT(getSize(int)));
+    memorySize->setInputMode(QInputDialog::DoubleInput);
+    QObject::connect(memorySize, SIGNAL(doubleValueChanged(double)), this, SLOT(getSize(double)));
 
     holesNo->setLabelText("");
     holesNo->setInputMode(QInputDialog::IntInput);
@@ -81,6 +81,33 @@ void MainWindow::createMainMenu()
     layout->addWidget(reset, 23, 0);
     layout->addWidget(exit, 23, 1);
 
+    chart->addSeries(memory);
+    chart->setTitle("Memory Layout");
+    chart->setAnimationOptions(QChart::SeriesAnimations);
+
+    QStringList categoriesX;
+    categoriesX << "Memory";
+
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(categoriesX);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    memory->attachAxis(axisX);
+
+    QValueAxis *axisY = new QValueAxis();
+    chart->addAxis(axisY, Qt::AlignLeft);
+    memory->attachAxis(axisY);
+
+    axisY->setReverse(true);
+    axisY->setTickCount(12);
+    axisY->setLabelFormat("%.1f");
+    axisY->setTitleText("Size");
+
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignRight);
+
+    showMemory->setRenderHint(QPainter::Antialiasing);
+    layout->addWidget(showMemory, 0, 3, 12, 1);
+
     QObject::connect(alg, SIGNAL(activated(int)), this, SLOT(getAlgorithm(int)));
     QObject::connect(holesNo, SIGNAL(intValueSelected(int)), this, SLOT(getNumberOfHoles(int)));
     QObject::connect(segmentsNo, SIGNAL(intValueSelected(int)), this, SLOT(getProcess(int)));
@@ -89,10 +116,10 @@ void MainWindow::createMainMenu()
     QWidget *mainWidget = new QWidget;
     mainWidget->setLayout(layout);
     setCentralWidget(mainWidget);
-    resize(1000,1000);
+    //resize(1000,1000);
 }
 
-void MainWindow::getSize(const int s)
+void MainWindow::getSize(const double s)
 {
     size = s;
 }
@@ -191,8 +218,6 @@ void MainWindow::getHole(const QModelIndex &index)
             itr1 = itr1 * 2;
             itr2 = itr2 * 2;
 
-            qDebug()<<firstIsHole<<lastIsHole;
-
             if(firstIsHole == 1 && lastIsHole == 1)
             {
                 for(int i = itr1; i >= 2; i -= 2)
@@ -277,45 +302,18 @@ void MainWindow::getHole(const QModelIndex &index)
                 itr1++;
             }
 
-            //for(int i = itr1; i >= 0; i--)
             for(int i = 0; i <= itr1; i++)
             {
-                s[i] = new QBarSet(QString("Hole%1").arg(m[i][3]));
+                s[i] = new QBarSet(QString("Hole %1").arg(m[i][3]));
                 s[i]->append(m[i][1]);
                 if(m[i][2] == -2)
                 {
-                    s[i]->setLabel(QString("Preallocated%1").arg(m[i][3]));
+                    s[i]->setLabel(QString("Preallocated %1").arg(m[i][3]));
                     s[i]->setColor(Qt::black);
                 }
                 memory->append(s[i]);
             }
-
-            chart->addSeries(memory);
-            chart->setTitle("Memory Layout");
-            chart->setAnimationOptions(QChart::SeriesAnimations);
-
-            QStringList categoriesX;
-            categoriesX << "Memory";
-
-            QBarCategoryAxis *axisX = new QBarCategoryAxis();
-            axisX->append(categoriesX);
-            chart->addAxis(axisX, Qt::AlignBottom);
-            memory->attachAxis(axisX);
-
-            QValueAxis *axisY = new QValueAxis();
-            chart->addAxis(axisY, Qt::AlignLeft);
-            memory->attachAxis(axisY);
-
-            axisY->setReverse(true);
-            axisY->setTickCount(size + 1);
-            axisY->setLabelFormat("%.0f");
-            axisY->setTitleText("Size");
-
-            chart->legend()->setVisible(true);
-            chart->legend()->setAlignment(Qt::AlignRight);
-
-            showMemory->setRenderHint(QPainter::Antialiasing);
-            layout->addWidget(showMemory, 0, 3, 12, 1);
+            chart->axisY()->setRange(0, size);
         }
     }
 }
@@ -324,7 +322,11 @@ void MainWindow::getProcess(const int rows)
 {
     m2->hide();
     layout->addWidget(m3, 1, 0);
+
     process->setRowCount(rows);
+
+    itr3 = 0, itr4 = 0;
+    processCounter++;
 
     for (int row = 0; row < process->rowCount(); ++row)
     {
@@ -355,8 +357,8 @@ void MainWindow::getSegment(const QModelIndex &index)
         if(index.column() == 0)
         {
             baseFlag = 1;
-            m[itr1][0] = index.data().toFloat();
-            itr1++;
+            segs[itr3][0] = index.data().toString();
+            itr3++;
         }
         if(index.column() == 1)
         {
@@ -371,7 +373,10 @@ void MainWindow::getSegment(const QModelIndex &index)
                     break;
                 }
             }
-
+            segs[itr4][1] = index.data().toString();
+            segs[itr4][2] = processCounter;
+            segs[itr4][3] = index.row() + 1;
+            itr4++;
         }
     }
 }
@@ -380,36 +385,104 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 {
     algorithmNumber = algorithmNO;
 
-    /*
-    if(algorithmNO == 1)
+    int segsItr = 0;
+    bool fit = 0;
+
+    if(algorithmNO == 0)
+    {
+        while(segsItr < itr3)
+        {
+            for(int i = 0; i <= itr1; i++)
+            {
+                if(m[i][2] == -1)
+                {
+                    if(m[i][1] > segs[segsItr][1].toFloat())
+                    {
+                        for(int j = itr1 + 1; j > i + 1; j--)
+                        {
+                            m[j][0] = m[j - 1][0];
+                            m[j][1] = m[j - 1][1];
+                            m[j][2] = m[j - 1][2];
+                            m[j][3] = m[j - 1][3];
+                        }
+
+                        m[i + 1][0] = m[i][0] + segs[segsItr][1].toFloat();
+                        m[i + 1][1] = m[i][1] - segs[segsItr][1].toFloat();
+                        m[i + 1][2] = -1;
+                        m[i + 1][3] = m[i][3];
+
+                        m[i][1] = segs[segsItr][1].toFloat();
+                        m[i][2] = processCounter;
+                        m[i][3] = segsItr;
+                        segs[segsItr][4] = m[i][0];
+
+                        fit = 1;
+                        break;
+                    }
+                    else if(m[i][1] == segs[segsItr][1].toFloat())
+                    {
+                        m[i][2] = processCounter;
+                        m[i][3] = segsItr;
+                        segs[segsItr][4] = m[i][0];
+
+                        for(int j = 0; j <= itr1 + 1; j++)
+                        {
+                            if(m[j][2] == -1)
+                            {
+                                m[j][3]--;
+                            }
+                        }
+
+                        fit = 1;
+                        break;
+                    }
+                    else if(m[i][1] < segs[segsItr][1].toFloat())
+                    {
+                        continue;
+                    }
+                }
+            }
+            if(fit == 0)
+            {
+
+            }
+            segsItr++;
+         }
+    }
+
+    else if(algorithmNO == 1)
     {
 
     }
-    else if(algorithmNO == 2)
-    {
 
-    }*/
+    memory->clear();
+    segsItr = 0;
 
-    /*
-    if(algorithmNO == 4 || algorithmNO == 5)
+    for(int i = 0; i <= itr1 + 1; i++)
     {
-        model->setColumnCount(3);
-        model->setHorizontalHeaderItem(2, new QStandardItem(tr("Priority")));
+        s[i] = new QBarSet("");
+
+        if(m[i][2] == -1)
+        {
+            s[i]->setLabel(QString("Hole %1").arg(m[i][3]));
+        }
+        else if(m[i][2] == -2)
+        {
+            s[i]->setLabel(QString("Preallocated %1").arg(m[i][3]));
+            s[i]->setColor(Qt::black);
+        }
+        else
+        {
+            s[i]->setLabel(QString("Process %1-%2").arg(processCounter).arg(segs[segsItr][0]));
+            segsItr++;
+        }
+        s[i]->append(m[i][1]);
+        memory->append(s[i]);
     }
-    else
-    {
-        model->setColumnCount(2);
-    }
 
-    if(algorithmNO == 2 || algorithmNO == 3 || algorithmNO == 5)
-    {
-        QInputDialog *Quantum = new QInputDialog;
+    chart->axisY()->setRange(0, size);
 
-        Quantum->setLabelText("Please enter the time Quantum:");
-        Quantum->setInputMode(QInputDialog::IntInput);
-        layout->addWidget(Quantum, 1, 0);
-        QObject::connect(Quantum, SIGNAL(intValueSelected(int)), this, SLOT(getQuantum(int)));
-    }*/
+    //layout->addWidget(segmentsNo, 7, 1);
 }
 
 void MainWindow::restart()

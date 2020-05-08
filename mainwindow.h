@@ -24,11 +24,14 @@ public:
 private:
 
     Ui::MainWindow *ui;
-    int algorithmNumber = 0, size = 0, itr1 = 0, itr2 = 0, contiguousHoles = 0;
+    int algorithmNumber = 0, itr1 = 0, itr2 = 0, contiguousHoles = 0, processCounter = 0, itr3 = 0, itr4 = 0;
     bool baseFlag = 0, limitFlag = 0, firstIsHole = 0, lastIsHole = 0;
     float m[1000][4], basePlusLimit = 0;
+    double size = 0;
+    QString segs[100][5];
     QLabel *m2 = new QLabel("Please enter the number of holes:");
     QLabel *m3 = new QLabel("Please enter the number of segments for the next process:");
+    QInputDialog *segmentsNo = new QInputDialog;
     QGridLayout *layout = new QGridLayout;
     QStandardItemModel  *model = new QStandardItemModel;
     QStandardItemModel  *process = new QStandardItemModel;
@@ -43,7 +46,7 @@ private:
 public slots:
 
     void restart();
-    void getSize(const int s);
+    void getSize(const double s);
     void getNumberOfHoles(const int holes);
     void getHole(const QModelIndex &index);
     void getProcess(const int rows);

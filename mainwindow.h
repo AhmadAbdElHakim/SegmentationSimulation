@@ -52,6 +52,8 @@ public slots:
     void getProcess(const int rows);
     void getSegment(const QModelIndex &index);
     void getAlgorithm(const int algorithmNO);
+    void getDeProcess(const int n);
+    void getDeReserved(const int n);
     void showSegTable();
 };
 #endif // MAINWINDOW_H

@@ -144,6 +144,8 @@ void MainWindow::createMainMenu()
     QObject::connect(process, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getSegment(QModelIndex)));
     QObject::connect(alg, SIGNAL(activated(int)), this, SLOT(getAlgorithm(int)));
     QObject::connect(showSeg, SIGNAL(clicked()), this, SLOT(showSegTable()));
+    QObject::connect(deProcess, SIGNAL(intValueSelected(int)), this, SLOT(getDeProcess(int)));
+    QObject::connect(deReserveSeg, SIGNAL(intValueSelected(int)), this, SLOT(getDeReserved(int)));
     QObject::connect(reset, SIGNAL(clicked()), this, SLOT(restart()));
 
     QWidget *mainWidget = new QWidget;
@@ -670,6 +672,33 @@ void MainWindow::getAlgorithm(const int algorithmNO)
     showTable->hide();
     layout->addWidget(m3, 7, 0);
     segmentsNo->show();
+}
+
+void MainWindow::getDeReserved(const int n)
+{
+    for(int i = 0; i < itr1; i++)
+    {
+        if(m[i][2] == -2 && m[i][3] == n)
+        {
+            m[i][2] = -1;
+            holes++;
+            holesSize += m[i][0];
+            break;
+        }
+    }
+}
+
+void MainWindow::getDeProcess(const int n)
+{
+    for(int i = 0; i < itr1; i++)
+    {
+        if(m[i][2] == n)
+        {
+            m[i][2] = -1;
+            holes++;
+            holesSize += m[i][0];
+        }
+    }
 }
 
 void MainWindow::showSegTable()

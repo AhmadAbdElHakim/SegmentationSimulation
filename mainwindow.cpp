@@ -23,6 +23,8 @@
 
 QT_CHARTS_USE_NAMESPACE
 
+void swap(float *xp, float *yp);
+
 using namespace std;
 
 MainWindow::MainWindow(QWidget *parent): QMainWindow(parent), ui(new Ui::MainWindow)
@@ -108,15 +110,21 @@ void MainWindow::createMainMenu()
     showMemory->setRenderHint(QPainter::Antialiasing);
     layout->addWidget(showMemory, 0, 3, 12, 1);
 
+
+    showTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    layout->addWidget(showTable, 3, 0, 3, 1);
+    showTable->hide();
+
     QObject::connect(alg, SIGNAL(activated(int)), this, SLOT(getAlgorithm(int)));
     QObject::connect(holesNo, SIGNAL(intValueSelected(int)), this, SLOT(getNumberOfHoles(int)));
     QObject::connect(segmentsNo, SIGNAL(intValueSelected(int)), this, SLOT(getProcess(int)));
+    QObject::connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getHole(QModelIndex)));
+    QObject::connect(process, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getSegment(QModelIndex)));
     QObject::connect(reset, SIGNAL(clicked()), this, SLOT(restart()));
 
     QWidget *mainWidget = new QWidget;
     mainWidget->setLayout(layout);
     setCentralWidget(mainWidget);
-    //resize(1000,1000);
 }
 
 void MainWindow::getSize(const double s)
@@ -141,12 +149,7 @@ void MainWindow::getNumberOfHoles(const int holes)
     model->setHorizontalHeaderItem(1, new QStandardItem(tr("Limit (size)")));
 
     showTable->setModel(model);
-    showTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-
-    layout->addWidget(showTable, 3, 0, 3, 1);
-    //layout->addWidget(drawGantt, 7, 0, 1, 1);
-
-    QObject::connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getHole(QModelIndex)));
+    showTable->show();
 }
 
 void MainWindow::getHole(const QModelIndex &index)
@@ -166,43 +169,47 @@ void MainWindow::getHole(const QModelIndex &index)
                 break;
             }
         }
+
         if(index.column() == 0)
         {
-            baseFlag = 1;
             m[itr1][0] = index.data().toFloat();
+            holes++;
             itr1++;
         }
         if(index.column() == 1)
         {
-            limitFlag = 1;
             m[itr2][1] = index.data().toFloat();
             m[itr2][2] = -1;
-            m[itr2][3] = index.row() - contiguousHoles + 1;
+            m[itr2][3] = index.row() + 1;
             itr2++;
         }
-        if(baseFlag == 1 && limitFlag == 1)
-        {
-            baseFlag = 0;
-            limitFlag = 0;
 
-            if(basePlusLimit == m[itr1 - 1][0] && basePlusLimit != 0)
-            {
-                itr2 -=2;
-                m[itr2][1] = m[itr2][1] + m[itr2 + 1][1];
-                m[itr2][2] = -1;
-                m[itr2][3] = index.row();
-                itr1--;
-                itr2++;
-                contiguousHoles++;
-            }
-            else
-            {
-                basePlusLimit = m[itr1 - 1][0] + m[itr2 - 1][1];
-            }
-        }
-
-        if(itr1 + contiguousHoles == model->rowCount() && itr2 + contiguousHoles == model->rowCount())
+        if(itr1 == model->rowCount() && itr2 == model->rowCount())
         {
+            float basePlusLimit = 0;
+            for(int i = 0; i < itr1; i++)
+            {
+                if(basePlusLimit == m[i][0] && basePlusLimit != 0)
+                {
+                    m[i - 1][1] = m[i - 1][1] + m[i][1];
+
+                    for(int j = i; j < itr1; j++)
+                    {
+                        m[j][0] = m[j + 1][0];
+                        m[j][1] = m[j + 1][1];
+                        m[j][2] = m[j + 1][2];
+                        m[j][3] = m[j + 1][3];
+                    }
+                    itr1--;
+                    itr2--;
+                    holes--;
+                }
+                else
+                {
+                    basePlusLimit = m[i][0] + m[i][1];
+                }
+            }
+
             if(m[0][0] == 0)
             {
                 firstIsHole = 1;
@@ -323,9 +330,10 @@ void MainWindow::getProcess(const int rows)
     m2->hide();
     layout->addWidget(m3, 1, 0);
 
+    model->clear();
+    process->clear();
     process->setRowCount(rows);
 
-    itr3 = 0, itr4 = 0;
     processCounter++;
 
     for (int row = 0; row < process->rowCount(); ++row)
@@ -341,11 +349,7 @@ void MainWindow::getProcess(const int rows)
     process->setHorizontalHeaderItem(1, new QStandardItem(tr("Size")));
 
     showTable->setModel(process);
-    showTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-
-    layout->addWidget(showTable, 3, 0, 3, 1);
-
-    QObject::connect(process, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getSegment(QModelIndex)));
+    showTable->show();
 }
 
 void MainWindow::getSegment(const QModelIndex &index)
@@ -356,7 +360,6 @@ void MainWindow::getSegment(const QModelIndex &index)
 
         if(index.column() == 0)
         {
-            baseFlag = 1;
             segs[itr3][0] = index.data().toString();
             itr3++;
         }
@@ -374,8 +377,8 @@ void MainWindow::getSegment(const QModelIndex &index)
                 }
             }
             segs[itr4][1] = index.data().toString();
-            segs[itr4][2] = processCounter;
-            segs[itr4][3] = index.row() + 1;
+            segs[itr4][2] = QString::number(processCounter);
+            segs[itr4][3] = QString::number(index.row() + 1);
             itr4++;
         }
     }
@@ -385,18 +388,18 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 {
     algorithmNumber = algorithmNO;
 
-    int segsItr = 0;
+    int segsItr = 0, segsStart = 0;
     bool fit = 0;
 
     if(algorithmNO == 0)
     {
-        while(segsItr < itr3)
+        while(allSegsItr < itr3)
         {
             for(int i = 0; i <= itr1; i++)
             {
                 if(m[i][2] == -1)
                 {
-                    if(m[i][1] > segs[segsItr][1].toFloat())
+                    if(m[i][1] > segs[allSegsItr][1].toFloat())
                     {
                         for(int j = itr1 + 1; j > i + 1; j--)
                         {
@@ -406,83 +409,223 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                             m[j][3] = m[j - 1][3];
                         }
 
-                        m[i + 1][0] = m[i][0] + segs[segsItr][1].toFloat();
-                        m[i + 1][1] = m[i][1] - segs[segsItr][1].toFloat();
+                        m[i + 1][0] = m[i][0] + segs[allSegsItr][1].toFloat();
+                        m[i + 1][1] = m[i][1] - segs[allSegsItr][1].toFloat();
                         m[i + 1][2] = -1;
                         m[i + 1][3] = m[i][3];
 
-                        m[i][1] = segs[segsItr][1].toFloat();
+                        m[i][1] = segs[allSegsItr][1].toFloat();
                         m[i][2] = processCounter;
-                        m[i][3] = segsItr;
-                        segs[segsItr][4] = m[i][0];
+                        m[i][3] = segsItr + 1;
+                        segs[allSegsItr][4] = QString::number(m[i][0]);
 
+                        itr1++;
                         fit = 1;
                         break;
                     }
-                    else if(m[i][1] == segs[segsItr][1].toFloat())
+                    else if(m[i][1] == segs[allSegsItr][1].toFloat())
                     {
                         m[i][2] = processCounter;
-                        m[i][3] = segsItr;
-                        segs[segsItr][4] = m[i][0];
+                        m[i][3] = segsItr + 1;
+                        segs[allSegsItr][4] = QString::number(m[i][0]);
 
                         for(int j = 0; j <= itr1 + 1; j++)
                         {
-                            if(m[j][2] == -1)
+                            if(m[j][2] == -1 && m[j][3] > 1)
                             {
                                 m[j][3]--;
                             }
                         }
 
+                        holes--;
                         fit = 1;
                         break;
                     }
-                    else if(m[i][1] < segs[segsItr][1].toFloat())
+                    else if(m[i][1] < segs[allSegsItr][1].toFloat())
                     {
                         continue;
                     }
                 }
             }
+
             if(fit == 0)
             {
 
             }
+
+            allSegsItr++;
             segsItr++;
          }
     }
 
     else if(algorithmNO == 1)
     {
+        segsStart = allSegsItr;
 
+        while(allSegsItr < itr3)
+        {
+            int tempItr = 0;
+            float tempHoles[holes][4];
+
+            for(int i = 0; tempItr < holes; i++)
+            {
+                if(m[i][2] == -1)
+                {
+                    tempHoles[tempItr][0] = m[i][0];
+                    tempHoles[tempItr][1] = m[i][1];
+                    tempHoles[tempItr][2] = m[i][3];
+                    tempHoles[tempItr][3] = i;
+                    tempItr++;
+                }
+            }
+
+            for(int i = 0; i < holes; i++)
+            {
+                for(int j = 0; j < holes - 1; j++)
+                {
+                    if(tempHoles[j][1] > tempHoles[j + 1][1])
+                    {
+                        swap(&tempHoles[j][0], & tempHoles[j + 1][0]);
+                        swap(&tempHoles[j][1], & tempHoles[j + 1][1]);
+                        swap(&tempHoles[j][2], & tempHoles[j + 1][2]);
+                        swap(&tempHoles[j][3], & tempHoles[j + 1][3]);
+                    }
+                }
+            }
+
+            tempItr = 1;
+            int i = tempHoles[0][3];
+
+            for(int k = 0; k < holes; k++)
+            {
+                i = tempHoles[k][3];
+
+                if(m[i][2] == -1)
+                {
+                    if(m[i][1] > segs[allSegsItr][1].toFloat())
+                    {
+                        for(int j = itr1 + 1; j > i + 1; j--)
+                        {
+                            m[j][0] = m[j - 1][0];
+                            m[j][1] = m[j - 1][1];
+                            m[j][2] = m[j - 1][2];
+                            m[j][3] = m[j - 1][3];
+                        }
+
+                        m[i + 1][0] = m[i][0] + segs[allSegsItr][1].toFloat();
+                        m[i + 1][1] = m[i][1] - segs[allSegsItr][1].toFloat();
+                        m[i + 1][2] = -1;
+                        m[i + 1][3] = m[i][3];
+
+                        m[i][1] = segs[allSegsItr][1].toFloat();
+                        m[i][2] = processCounter;
+                        m[i][3] = segsItr + 1;
+                        segs[allSegsItr][4] = QString::number(m[i][0]);
+
+                        itr1++;
+                        fit = 1;
+                        break;
+                    }
+                    else if(m[i][1] == segs[allSegsItr][1].toFloat())
+                    {
+                        m[i][2] = processCounter;
+                        m[i][3] = segsItr + 1;
+                        segs[allSegsItr][4] = QString::number(m[i][0]);
+
+                        for(int j = 0; j <= itr1 + 1; j++)
+                        {
+                            if(m[j][2] == -1 && m[j][3] > 1)
+                            {
+                                m[j][3]--;
+                            }
+                        }
+
+                        holes--;
+                        fit = 1;
+                        break;
+                    }
+                    else if(m[i][1] < segs[allSegsItr][1].toFloat())
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            if(fit == 0)
+            {
+
+            }
+
+            allSegsItr++;
+            segsItr++;
+        }
+
+        for(int i = segsStart; i < allSegsItr; i++)
+        {
+            tempNames[i][0] = segs[i][0];
+            tempNames[i][1] = segs[i][4];
+        }
+
+        for(int i = 0; i < allSegsItr; i++)
+        {
+            for(int j = 0; j < allSegsItr - 1; j++)
+            {
+                float x = segs[j][4].toFloat(), y = segs[j + 1][4].toFloat();
+
+                if(x > y)
+                {
+                    QString temp = segs[j][0];
+                    segs[j][0] = segs[j + 1][0];
+                    segs[j + 1][0] = temp;
+                    temp = segs[j][4];
+                    segs[j][4] = segs[j + 1][4];
+                    segs[j + 1][4] = temp;
+                }
+            }
+        }
     }
 
     memory->clear();
     segsItr = 0;
 
-    for(int i = 0; i <= itr1 + 1; i++)
+    for(int i = 0; i <= itr1; i++)
     {
         s[i] = new QBarSet("");
 
-        if(m[i][2] == -1)
+        if(!(m[i][0] == size))
         {
-            s[i]->setLabel(QString("Hole %1").arg(m[i][3]));
-        }
-        else if(m[i][2] == -2)
-        {
-            s[i]->setLabel(QString("Preallocated %1").arg(m[i][3]));
-            s[i]->setColor(Qt::black);
-        }
-        else
-        {
-            s[i]->setLabel(QString("Process %1-%2").arg(processCounter).arg(segs[segsItr][0]));
-            segsItr++;
+            if(m[i][2] == -1)
+            {
+                s[i]->setLabel(QString("Hole %1").arg(m[i][3]));
+            }
+            else if(m[i][2] == -2)
+            {
+                s[i]->setLabel(QString("Preallocated %1").arg(m[i][3]));
+                s[i]->setColor(Qt::black);
+            }
+            else
+            {
+                s[i]->setLabel(QString("Process %1-%2").arg(m[i][2]).arg(segs[segsItr][0]));
+                segsItr++;
+            }
         }
         s[i]->append(m[i][1]);
         memory->append(s[i]);
     }
 
-    chart->axisY()->setRange(0, size);
+    if(algorithmNO == 1)
+    {
+        for(int i = 0; i < allSegsItr; i++)
+        {
+             segs[i][0] = tempNames[i][0];
+             segs[i][4] = tempNames[i][1];
+        }
+    }
 
-    //layout->addWidget(segmentsNo, 7, 1);
+    chart->axisY()->setRange(0, size);
+    showTable->hide();
+    layout->addWidget(m3, 7, 0);
+    segmentsNo->show();
 }
 
 void MainWindow::restart()
@@ -496,38 +639,9 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-/*
-void MainWindow::appendBurst()
+void swap(float *xp, float *yp)
 {
-    drawGantt->hide();
-
-    chart->addSeries(gantt);
-
-    for(int i = 0; i < chart->legend()->markers().count(); i++)
-    {
-        for(int j = i; j < chart->legend()->markers().count(); j++)
-        {
-            if((chart->legend()->markers())[i]->label() == (chart->legend()->markers())[j]->label() && i != j)
-            {
-                (chart->legend()->markers())[j]->setVisible(0);
-            }
-        }
-    }
-
-    QLabel *m3 = new QLabel("Average turn around time:");
-    QLabel *m4 = new QLabel("Average waiting time:");
-
-    layout->addWidget(showGantt, 8, 0, 12, 2);
-    layout->addWidget(m3, 21, 0, 1, 1);
-    layout->addWidget(avgTurnaround, 21, 1);
-    layout->addWidget(m4, 22, 0, 1, 1);
-    layout->addWidget(avg, 22, 1);
-}
-
-void swap(int *xp, int *yp)
-{
-    int temp = *xp;
+    float temp = *xp;
     *xp = *yp;
     *yp = temp;
 }
-*/

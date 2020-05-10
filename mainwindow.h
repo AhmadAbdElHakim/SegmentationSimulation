@@ -24,11 +24,11 @@ public:
 private:
 
     Ui::MainWindow *ui;
-    int algorithmNumber = 0, itr1 = 0, itr2 = 0, contiguousHoles = 0, processCounter = 0, itr3 = 0, itr4 = 0;
-    bool baseFlag = 0, limitFlag = 0, firstIsHole = 0, lastIsHole = 0;
-    float m[1000][4], basePlusLimit = 0;
+    int algorithmNumber = 0, itr1 = 0, itr2 = 0, itr3 = 0, itr4 = 0, processCounter = 0, allSegsItr = 0, holes = 0;
+    bool firstIsHole = 0, lastIsHole = 0;
+    float m[100][4];
     double size = 0;
-    QString segs[100][5];
+    QString segs[100][5], tempNames[100][2];
     QLabel *m2 = new QLabel("Please enter the number of holes:");
     QLabel *m3 = new QLabel("Please enter the number of segments for the next process:");
     QInputDialog *segmentsNo = new QInputDialog;

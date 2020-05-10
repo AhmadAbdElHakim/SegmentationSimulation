@@ -50,20 +50,35 @@ void MainWindow::createMainMenu()
     QComboBox *alg = new QComboBox;
     //QLabel *m5 = new QLabel("Please enter the process number to show segmentation table:");
     QPushButton *showSeg = new QPushButton("Show Segmentation Table");
+    QLabel *m5 = new QLabel("Please enter the process number to deallocate:");
+    QInputDialog *deReserveSeg = new QInputDialog;
+    QLabel *m6 = new QLabel("Please enter the reserved segment number to deallocate:");
+    QInputDialog *deProcess = new QInputDialog;
     QPushButton *reset = new QPushButton("Reset");
 
     memorySize->setLabelText("");
     memorySize->setOption(QInputDialog::NoButtons);
     memorySize->setInputMode(QInputDialog::DoubleInput);
-    QObject::connect(memorySize, SIGNAL(doubleValueChanged(double)), this, SLOT(getSize(double)));
 
     holesNo->setLabelText("");
     holesNo->setInputMode(QInputDialog::IntInput);
     holesNo->setCancelButtonText("");
+    holesNo->setOkButtonText("");
 
     segmentsNo->setLabelText("");
     segmentsNo->setInputMode(QInputDialog::IntInput);
     segmentsNo->setCancelButtonText("");
+    segmentsNo->setOkButtonText("");
+
+    deReserveSeg->setLabelText("");
+    deReserveSeg->setInputMode(QInputDialog::IntInput);
+    deReserveSeg->setCancelButtonText("");
+    deReserveSeg->setOkButtonText("");
+
+    deProcess->setLabelText("");
+    deProcess->setInputMode(QInputDialog::IntInput);
+    deProcess->setCancelButtonText("");
+    deProcess->setOkButtonText("");
 
     alg->addItem("First Fit");
     alg->addItem("Best Fit");
@@ -83,10 +98,13 @@ void MainWindow::createMainMenu()
     layout->addWidget(segmentsNo, 7, 1);
     layout->addWidget(m4, 8, 0);
     layout->addWidget(alg, 8, 1);
-    //layout->addWidget(m5, 9, 0);
-    layout->addWidget(showSeg, 10, 0);
-    layout->addWidget(reset, 23, 0);
-    layout->addWidget(exit, 23, 1);
+    layout->addWidget(m5, 12, 0);
+    layout->addWidget(deProcess, 12, 1);
+    layout->addWidget(m6, 13, 0);
+    layout->addWidget(deReserveSeg, 13, 1);
+    layout->addWidget(showSeg, 14, 0);
+    layout->addWidget(reset, 14, 1);
+    layout->addWidget(exit, 14, 3);
 
     chart->addSeries(memory);
     chart->setTitle("Memory Layout");
@@ -105,7 +123,7 @@ void MainWindow::createMainMenu()
     memory->attachAxis(axisY);
 
     axisY->setReverse(true);
-    axisY->setTickCount(12);
+    axisY->setTickCount(13);
     axisY->setLabelFormat("%.1f");
     axisY->setTitleText("Size");
 
@@ -113,12 +131,13 @@ void MainWindow::createMainMenu()
     chart->legend()->setAlignment(Qt::AlignRight);
 
     showMemory->setRenderHint(QPainter::Antialiasing);
-    layout->addWidget(showMemory, 0, 3, 12, 1);
+    layout->addWidget(showMemory, 0, 3, 14, 1);
 
     showTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    layout->addWidget(showTable, 3, 0, 3, 1);
+    layout->addWidget(showTable, 2, 0, 5, 1);
     showTable->hide();
 
+    QObject::connect(memorySize, SIGNAL(doubleValueChanged(double)), this, SLOT(getSize(double)));
     QObject::connect(holesNo, SIGNAL(intValueSelected(int)), this, SLOT(getNumberOfHoles(int)));
     QObject::connect(segmentsNo, SIGNAL(intValueSelected(int)), this, SLOT(getProcess(int)));
     QObject::connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getHole(QModelIndex)));
@@ -186,6 +205,7 @@ void MainWindow::getHole(const QModelIndex &index)
             m[itr2][1] = index.data().toFloat();
             m[itr2][2] = -1;
             m[itr2][3] = index.row() + 1;
+            holesSize += m[itr2][1];
             itr2++;
         }
 
@@ -320,7 +340,7 @@ void MainWindow::getHole(const QModelIndex &index)
                 s[i]->append(m[i][1]);
                 if(m[i][2] == -2)
                 {
-                    s[i]->setLabel(QString("Preallocated %1").arg(m[i][3]));
+                    s[i]->setLabel(QString("Reserved %1").arg(m[i][3]));
                     s[i]->setColor(Qt::black);
                 }
                 memory->append(s[i]);
@@ -387,6 +407,22 @@ void MainWindow::getSegment(const QModelIndex &index)
             itr4++;
         }
     }
+
+    if(itr3 - allSegsItr == process->rowCount() && itr4 - allSegsItr == process->rowCount())
+    {
+        float segsSize = 0;
+        for(int i = allSegsItr; i < itr3; i++)
+        {
+            segsSize += segs[i][1].toFloat();
+        }
+
+        if(segsSize > holesSize)
+        {
+            QMessageBox enteredStirng;
+            enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment.");
+            enteredStirng.exec();
+        }
+    }
 }
 
 void MainWindow::getAlgorithm(const int algorithmNO)
@@ -394,12 +430,12 @@ void MainWindow::getAlgorithm(const int algorithmNO)
     algorithmNumber = algorithmNO;
 
     int segsItr = 0, segsStart = allSegsItr;
-    bool fit = 0;
 
     if(algorithmNO == 0)
     {
         while(allSegsItr < itr3)
         {
+            bool fit = 0;
             for(int i = 0; i <= itr1; i++)
             {
                 if(m[i][2] == -1)
@@ -413,7 +449,6 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                             m[j][2] = m[j - 1][2];
                             m[j][3] = m[j - 1][3];
                         }
-
                         m[i + 1][0] = m[i][0] + segs[allSegsItr][1].toFloat();
                         m[i + 1][1] = m[i][1] - segs[allSegsItr][1].toFloat();
                         m[i + 1][2] = -1;
@@ -424,8 +459,9 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                         m[i][3] = segsItr + 1;
                         segs[allSegsItr][4] = QString::number(m[i][0]);
 
-                        itr1++;
+                        holesSize -= segs[allSegsItr][1].toFloat();
                         fit = 1;
+                        itr1++;
                         break;
                     }
                     else if(m[i][1] == segs[allSegsItr][1].toFloat())
@@ -442,8 +478,9 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                             }
                         }
 
-                        holes--;
+                        holesSize -= segs[allSegsItr][1].toFloat();
                         fit = 1;
+                        holes--;
                         break;
                     }
                     else if(m[i][1] < segs[allSegsItr][1].toFloat())
@@ -455,17 +492,13 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 
             if(fit == 0)
             {
-
+                QMessageBox enteredStirng;
+                enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment");
+                enteredStirng.exec();
             }
 
             allSegsItr++;
             segsItr++;
-        }
-
-        for(int i = segsStart; i < allSegsItr; i++)
-        {
-            tempNames[i][0] = segs[i][0];
-            tempNames[i][1] = segs[i][4];
         }
     }
 
@@ -474,6 +507,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
         while(allSegsItr < itr3)
         {
             int tempItr = 0;
+            bool fit = 0;
             float tempHoles[holes][4];
 
             for(int i = 0; tempItr < holes; i++)
@@ -531,8 +565,9 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                         m[i][3] = segsItr + 1;
                         segs[allSegsItr][4] = QString::number(m[i][0]);
 
-                        itr1++;
+                        holesSize -= segs[allSegsItr][1].toFloat();
                         fit = 1;
+                        itr1++;
                         break;
                     }
                     else if(m[i][1] == segs[allSegsItr][1].toFloat())
@@ -549,8 +584,9 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                             }
                         }
 
-                        holes--;
+                        holesSize -= segs[allSegsItr][1].toFloat();
                         fit = 1;
+                        holes--;
                         break;
                     }
                     else if(m[i][1] < segs[allSegsItr][1].toFloat())
@@ -562,37 +598,40 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 
             if(fit == 0)
             {
-
+                QMessageBox enteredStirng;
+                enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment");
+                enteredStirng.exec();
             }
 
             allSegsItr++;
             segsItr++;
         }
+    }
 
-        for(int i = segsStart; i < allSegsItr; i++)
-        {
-            tempNames[i][0] = segs[i][0];
-            tempNames[i][1] = segs[i][4];
-        }
+    for(int i = segsStart; i < allSegsItr; i++)
+    {
+        tempNames[i][0] = segs[i][0];
+        tempNames[i][1] = segs[i][4];
+    }
 
-        for(int i = 0; i < allSegsItr; i++)
+    for(int i = 0; i < allSegsItr; i++)
+    {
+        for(int j = 0; j < allSegsItr - 1; j++)
         {
-            for(int j = 0; j < allSegsItr - 1; j++)
+            float x = segs[j][4].toFloat(), y = segs[j + 1][4].toFloat();
+
+            if(x > y)
             {
-                float x = segs[j][4].toFloat(), y = segs[j + 1][4].toFloat();
-
-                if(x > y)
-                {
-                    QString temp = segs[j][0];
-                    segs[j][0] = segs[j + 1][0];
-                    segs[j + 1][0] = temp;
-                    temp = segs[j][4];
-                    segs[j][4] = segs[j + 1][4];
-                    segs[j + 1][4] = temp;
-                }
+                QString temp = segs[j][0];
+                segs[j][0] = segs[j + 1][0];
+                segs[j + 1][0] = temp;
+                temp = segs[j][4];
+                segs[j][4] = segs[j + 1][4];
+                segs[j + 1][4] = temp;
             }
         }
     }
+
     memory->clear();
     segsItr = 0;
 
@@ -608,7 +647,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
             }
             else if(m[i][2] == -2)
             {
-                s[i]->setLabel(QString("Preallocated %1").arg(m[i][3]));
+                s[i]->setLabel(QString("Reserved %1").arg(m[i][3]));
                 s[i]->setColor(Qt::black);
             }
             else
@@ -621,13 +660,10 @@ void MainWindow::getAlgorithm(const int algorithmNO)
         memory->append(s[i]);
     }
 
-    if(algorithmNO == 1)
+    for(int i = 0; i < allSegsItr; i++)
     {
-        for(int i = 0; i < allSegsItr; i++)
-        {
-             segs[i][0] = tempNames[i][0];
-             segs[i][4] = tempNames[i][1];
-        }
+        segs[i][0] = tempNames[i][0];
+        segs[i][4] = tempNames[i][1];
     }
 
     chart->axisY()->setRange(0, size);

@@ -26,7 +26,7 @@ private:
     Ui::MainWindow *ui;
     int algorithmNumber = 0, itr1 = 0, itr2 = 0, itr3 = 0, itr4 = 0, processCounter = 0, allSegsItr = 0, holes = 0;
     bool firstIsHole = 0, lastIsHole = 0;
-    float m[100][4];
+    float m[100][4], holesSize = 0;
     double size = 0;
     QString segs[100][5], tempNames[100][2];
     QLabel *m2 = new QLabel("Please enter the number of holes:");

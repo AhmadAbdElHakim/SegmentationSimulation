@@ -52,5 +52,6 @@ public slots:
     void getProcess(const int rows);
     void getSegment(const QModelIndex &index);
     void getAlgorithm(const int algorithmNO);
+    void showSegTable();
 };
 #endif // MAINWINDOW_H

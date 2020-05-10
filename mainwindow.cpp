@@ -20,6 +20,7 @@
 #include <QLegend>
 #include <QLegendMarker>
 #include <QMessageBox>
+#include <QTableWidget>
 
 QT_CHARTS_USE_NAMESPACE
 
@@ -44,9 +45,11 @@ void MainWindow::createMainMenu()
     QInputDialog *holesNo = new QInputDialog;
     //QLabel *m3 = new QLabel("Please enter the number of segments for the next process:");
     //QInputDialog *segmentsNo = new QInputDialog;
-    //QPushButton *allocate = new QPushButton("Allocate");
-    QLabel *m8 = new QLabel("Please choose the algorithm:");
+    //QPushButton *deallocate = new QPushButton("Deallocate");
+    QLabel *m4 = new QLabel("Please choose the algorithm:");
     QComboBox *alg = new QComboBox;
+    //QLabel *m5 = new QLabel("Please enter the process number to show segmentation table:");
+    QPushButton *showSeg = new QPushButton("Show Segmentation Table");
     QPushButton *reset = new QPushButton("Reset");
 
     memorySize->setLabelText("");
@@ -75,11 +78,13 @@ void MainWindow::createMainMenu()
     layout->addWidget(memorySize, 0, 1);
     layout->addWidget(m2, 1, 0);
     layout->addWidget(holesNo, 1, 1);
-    //layout->addWidget(allocate, 6, 0);
+    //layout->addWidget(deallocate, 10, 0);
     layout->addWidget(m3, 7, 0);
     layout->addWidget(segmentsNo, 7, 1);
-    layout->addWidget(m8, 8, 0);
+    layout->addWidget(m4, 8, 0);
     layout->addWidget(alg, 8, 1);
+    //layout->addWidget(m5, 9, 0);
+    layout->addWidget(showSeg, 10, 0);
     layout->addWidget(reset, 23, 0);
     layout->addWidget(exit, 23, 1);
 
@@ -110,16 +115,16 @@ void MainWindow::createMainMenu()
     showMemory->setRenderHint(QPainter::Antialiasing);
     layout->addWidget(showMemory, 0, 3, 12, 1);
 
-
     showTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     layout->addWidget(showTable, 3, 0, 3, 1);
     showTable->hide();
 
-    QObject::connect(alg, SIGNAL(activated(int)), this, SLOT(getAlgorithm(int)));
     QObject::connect(holesNo, SIGNAL(intValueSelected(int)), this, SLOT(getNumberOfHoles(int)));
     QObject::connect(segmentsNo, SIGNAL(intValueSelected(int)), this, SLOT(getProcess(int)));
     QObject::connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getHole(QModelIndex)));
     QObject::connect(process, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)), this, SLOT(getSegment(QModelIndex)));
+    QObject::connect(alg, SIGNAL(activated(int)), this, SLOT(getAlgorithm(int)));
+    QObject::connect(showSeg, SIGNAL(clicked()), this, SLOT(showSegTable()));
     QObject::connect(reset, SIGNAL(clicked()), this, SLOT(restart()));
 
     QWidget *mainWidget = new QWidget;
@@ -388,7 +393,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 {
     algorithmNumber = algorithmNO;
 
-    int segsItr = 0, segsStart = 0;
+    int segsItr = 0, segsStart = allSegsItr;
     bool fit = 0;
 
     if(algorithmNO == 0)
@@ -455,13 +460,17 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 
             allSegsItr++;
             segsItr++;
-         }
+        }
+
+        for(int i = segsStart; i < allSegsItr; i++)
+        {
+            tempNames[i][0] = segs[i][0];
+            tempNames[i][1] = segs[i][4];
+        }
     }
 
     else if(algorithmNO == 1)
     {
-        segsStart = allSegsItr;
-
         while(allSegsItr < itr3)
         {
             int tempItr = 0;
@@ -584,7 +593,6 @@ void MainWindow::getAlgorithm(const int algorithmNO)
             }
         }
     }
-
     memory->clear();
     segsItr = 0;
 
@@ -626,6 +634,37 @@ void MainWindow::getAlgorithm(const int algorithmNO)
     showTable->hide();
     layout->addWidget(m3, 7, 0);
     segmentsNo->show();
+}
+
+void MainWindow::showSegTable()
+{
+    QTableWidget *segTable = new QTableWidget(allSegsItr, 5);
+
+    for (int row = 0; row < segTable->rowCount(); ++row)
+    {
+        QTableWidgetItem *processNo = new QTableWidgetItem(tr("%1").arg(segs[row][2]));
+        QTableWidgetItem *segNo = new QTableWidgetItem(tr("%1").arg(segs[row][3]));
+        QTableWidgetItem *name = new QTableWidgetItem(tr("%1").arg(segs[row][0]));
+        QTableWidgetItem *limit = new QTableWidgetItem(tr("%1").arg(segs[row][1]));
+        QTableWidgetItem *base = new QTableWidgetItem(tr("%1").arg(segs[row][4]));
+
+        segTable->setItem(row, 0, processNo);
+        segTable->setItem(row, 1, segNo);
+        segTable->setItem(row, 2, name);
+        segTable->setItem(row, 3, limit);
+        segTable->setItem(row, 4, base);
+    }
+
+    segTable->setHorizontalHeaderItem(0, new QTableWidgetItem(tr("Process No")));
+    segTable->setHorizontalHeaderItem(1, new QTableWidgetItem(tr("Segment No")));
+    segTable->setHorizontalHeaderItem(2, new QTableWidgetItem(tr("Name")));
+    segTable->setHorizontalHeaderItem(3, new QTableWidgetItem(tr("Limit")));
+    segTable->setHorizontalHeaderItem(4, new QTableWidgetItem(tr("Base")));
+
+    segTable->setWindowTitle("Segmentation Table");
+    segTable->resize(500, 500);
+    segTable->verticalHeader()->setVisible(false);
+    segTable->show();
 }
 
 void MainWindow::restart()

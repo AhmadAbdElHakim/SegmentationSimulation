@@ -24,7 +24,7 @@ public:
 private:
 
     Ui::MainWindow *ui;
-    int algorithmNumber = 0, itr1 = 0, itr2 = 0, itr3 = 0, itr4 = 0, processCounter = 0, allSegsItr = 0, holes = 0, segsStart;
+    int algorithmNumber = 0, itr1 = 0, itr2 = 0, itr3 = 0, itr4 = 0, processCounter = 0, allSegsItr = 0, holes = 0;
     bool firstIsHole = 0, lastIsHole = 0;
     float m[100][4], holesSize = 0;
     double size = 0;

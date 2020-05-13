@@ -50,6 +50,7 @@ void MainWindow::createMainMenu()
     memorySize->setLabelText("");
     memorySize->setOption(QInputDialog::NoButtons);
     memorySize->setInputMode(QInputDialog::DoubleInput);
+    memorySize->setDoubleMaximum(1000000000000);
 
     holesNo->setLabelText("");
     holesNo->setInputMode(QInputDialog::IntInput);
@@ -430,8 +431,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
 {
     algorithmNumber = algorithmNO;
 
-    int segsItr = 0;
-    segsStart = allSegsItr;
+    int segsItr = 0, segsStart = allSegsItr;
 
     if(algorithmNO == 0)
     {
@@ -495,7 +495,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
             if(fit == 0)
             {
                 QMessageBox enteredStirng;
-                enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment");
+                enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment or change the algorithm");
                 enteredStirng.exec();
 
                 int holeIndex = 1, segsItr = 0, found = 0, justAnotherIterator = 0;
@@ -666,6 +666,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                     itr4 = allSegsItr;
                     chart->axisY()->setRange(0, size);
                 }
+                processCounter--;
                 break;
             }
             else
@@ -774,7 +775,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
             if(fit == 0)
             {
                 QMessageBox enteredStirng;
-                enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment");
+                enteredStirng.setText("There is no enough space, please deallocate a process or a reserved segment or change the algorithm");
                 enteredStirng.exec();
 
                 int holeIndex = 1, segsItr = 0, found = 0, justAnotherIterator = 0;
@@ -945,6 +946,7 @@ void MainWindow::getAlgorithm(const int algorithmNO)
                     itr4 = allSegsItr;
                     chart->axisY()->setRange(0, size);
                 }
+                processCounter--;
                 break;
             }
             else
@@ -1012,7 +1014,6 @@ void MainWindow::getAlgorithm(const int algorithmNO)
         segs[i][0] = tempNames[i][0];
         segs[i][4] = tempNames[i][1];
     }
-
     chart->axisY()->setRange(0, size);
     showTable->hide();
     m3->show();
@@ -1369,6 +1370,11 @@ void MainWindow::showSegTable(const int n)
             QTableWidgetItem *name = new QTableWidgetItem(tr("%1").arg(segs[processStart][0]));
             QTableWidgetItem *limit = new QTableWidgetItem(tr("%1").arg(segs[processStart][1]));
             QTableWidgetItem *base = new QTableWidgetItem(tr("%1").arg(segs[processStart][4]));
+
+            segNo->setFlags(segNo->flags() ^ Qt::ItemIsEditable);
+            name->setFlags(name->flags() ^ Qt::ItemIsEditable);
+            limit->setFlags(limit->flags() ^ Qt::ItemIsEditable);
+            base->setFlags(base->flags() ^ Qt::ItemIsEditable);
 
             segTable->setItem(row, 0, segNo);
             segTable->setItem(row, 1, name);
